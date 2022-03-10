@@ -206,6 +206,7 @@ db_conn.close()
 
 **get_tables():**
 
+
 Script that returns all table names of a Database:
 ```python
 # Get table names of a database
@@ -230,6 +231,8 @@ def  get_tables(db_conn):
 ```
 
 **init_tables()**
+
+
 Script to create the tables at the output database. The function checks if there are any tables first in order to avoid dropping data:
 
 ```python
