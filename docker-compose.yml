@@ -8,7 +8,7 @@ x-airflow-common:
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
   volumes:
-    - ./data:/usr/local/airflow/data
+    - ./data:/data
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
@@ -52,6 +52,23 @@ services:
     restart: always
     ports:
     - "5433:5432"
+
+  output_db:
+    container_name: output_db
+    image: postgres:12
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: northwind_output_db
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/output_db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", northwind_output_db]
+      interval: 5s
+      retries: 5
+    restart: always
+    ports:
+    - "5434:5432"
 
   airflow-init:
     <<: *airflow-common

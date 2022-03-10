@@ -4,3 +4,5 @@ venv/
 dbdata/
 plugins/
 logs/
+data/csv/
+data/postgres/
