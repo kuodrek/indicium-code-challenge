@@ -395,6 +395,11 @@ It is possible to backfill:
 ```
 airflow dags backfill dag-indicium -s 2022-03-01 -e 2022-03-03
 ```
+
+The image below provides some visualization from the webserver of the backfill
+
+![image](https://user-images.githubusercontent.com/56697821/157701408-59f1fbde-714c-4493-97df-34b0e5c0630b.png)
+
 The output files are created at  `/data` folder.
 
 ## Access Output database
@@ -418,6 +423,7 @@ Airflow provides a web service to monitor and troubleshoot in pipelines. To star
 Thanks for reading! 
 
 Luis Nicolas Kuodrek
+
 [https://www.linkedin.com/in/luisnicolaskuodrek/](https://www.linkedin.com/in/luisnicolaskuodrek/)
 
 [https://github.com/kuodrek/](https://github.com/cidraljunior/)
