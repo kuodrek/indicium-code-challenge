@@ -46,6 +46,7 @@ CREATE TABLE categories (
     picture bytea
 );
 
+
 --
 -- Name: customer_customer_demo; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --

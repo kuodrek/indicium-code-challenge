@@ -1,6 +1,6 @@
 import sys
+import psycopg2
 
-exec_date = sys.argv[1][:10]
 N_TABLES = 14
 
 # Get table names of a database
@@ -25,7 +25,7 @@ def get_tables(db_conn):
 
 
 # Create tables for the output database
-def init_tables(db_conn):
+def init_tables(db_conn, exec_date):
     db_cursor = db_conn.cursor()
 
     print("Checking number of tables")
@@ -39,7 +39,6 @@ def init_tables(db_conn):
     )
 
     table_count = db_cursor.fetchone()[0]
-    table_count = 1
     print(f"table count: {table_count}")
 
     if table_count != N_TABLES:
@@ -69,21 +68,24 @@ def init_tables(db_conn):
             category_id smallint NOT NULL,
             category_name character varying(15) NOT NULL,
             description text,
-            picture bytea
+            picture bytea,
+            execution_date date
         );"""
         )
 
         db_cursor.execute(
             """CREATE TABLE customer_customer_demo (
             customer_id bpchar NOT NULL,
-            customer_type_id bpchar NOT NULL
+            customer_type_id bpchar NOT NULL,
+            execution_date date
         );"""
         )
 
         db_cursor.execute(
             """CREATE TABLE customer_demographics (
             customer_type_id bpchar NOT NULL,
-            customer_desc text
+            customer_desc text,
+            execution_date date
         );"""
         )
 
@@ -99,7 +101,8 @@ def init_tables(db_conn):
             postal_code character varying(10),
             country character varying(15),
             phone character varying(24),
-            fax character varying(24)
+            fax character varying(24),
+            execution_date date
         );"""
         )
 
@@ -122,14 +125,16 @@ def init_tables(db_conn):
             photo bytea,
             notes text,
             reports_to smallint,
-            photo_path character varying(255)
+            photo_path character varying(255),
+            execution_date date
         );"""
         )
 
         db_cursor.execute(
             """CREATE TABLE employee_territories (
             employee_id smallint NOT NULL,
-            territory_id character varying(20) NOT NULL
+            territory_id character varying(20) NOT NULL,
+            execution_date date
         );"""
         )
 
@@ -148,7 +153,8 @@ def init_tables(db_conn):
             ship_city character varying(15),
             ship_region character varying(15),
             ship_postal_code character varying(10),
-            ship_country character varying(15)
+            ship_country character varying(15),
+            execution_date date
         );"""
         )
 
@@ -163,14 +169,16 @@ def init_tables(db_conn):
             units_in_stock smallint,
             units_on_order smallint,
             reorder_level smallint,
-            discontinued integer NOT NULL
+            discontinued integer NOT NULL,
+            execution_date date
         );"""
         )
 
         db_cursor.execute(
             """CREATE TABLE region (
             region_id smallint NOT NULL,
-            region_description bpchar NOT NULL
+            region_description bpchar NOT NULL,
+            execution_date date
         );"""
         )
 
@@ -178,7 +186,8 @@ def init_tables(db_conn):
             """CREATE TABLE shippers (
             shipper_id smallint NOT NULL,
             company_name character varying(40) NOT NULL,
-            phone character varying(24)
+            phone character varying(24),
+            execution_date date
         );"""
         )
 
@@ -195,7 +204,8 @@ def init_tables(db_conn):
             country character varying(15),
             phone character varying(24),
             fax character varying(24),
-            homepage text
+            homepage text,
+            execution_date date
         );"""
         )
 
@@ -203,7 +213,8 @@ def init_tables(db_conn):
             """CREATE TABLE territories (
             territory_id character varying(20) NOT NULL,
             territory_description bpchar NOT NULL,
-            region_id smallint NOT NULL
+            region_id smallint NOT NULL,
+            execution_date date
         );"""
         )
 
@@ -212,7 +223,8 @@ def init_tables(db_conn):
             state_id smallint NOT NULL,
             state_name character varying(100),
             state_abbr character varying(2),
-            state_region character varying(50)
+            state_region character varying(50),
+            execution_date date
         );"""
         )
 
@@ -222,9 +234,27 @@ def init_tables(db_conn):
             product_id smallint NOT NULL,
             unit_price real NOT NULL,
             quantity smallint NOT NULL,
-            discount real NOT NULL
+            discount real NOT NULL,
+            execution_date date
         );"""
         )
 
         db_conn.commit()
         print("Tables created successfuly")
+
+    print(f"Deleting data where exec_date = {exec_date}:")
+    for table_name in get_tables(db_conn):
+        sql_delete_query = """DELETE FROM {0} WHERE execution_date = '{1}'; """.format(
+            table_name, exec_date
+        )
+        db_cursor.execute(sql_delete_query)
+
+    try:
+        db_conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Error: %s" % error)
+        db_conn.rollback()
+        db_cursor.close()
+        return 1
+    finally:
+        print(f"Data where exec_date = {exec_date} deleted successfuly")

@@ -5,6 +5,7 @@ x-airflow-common:
   build: .
   environment:
     &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
   volumes:
@@ -61,7 +62,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: northwind_output_db
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/output_db
+      - dbdata:/var/lib/postgresql/output_db
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", northwind_output_db]
       interval: 5s

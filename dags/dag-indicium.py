@@ -1,20 +1,23 @@
 from airflow import DAG
-from datetime import timedelta
+from datetime import datetime, timedelta
 from airflow.operators.bash_operator import BashOperator
-from airflow.utils.dates import days_ago
+from pendulum import today
 
 default_args = {
     "owner": "Luis Kuodrek",
     "depends_on_past": False,
-    "start_date": days_ago(3),
+    "start_date": datetime(2022, 3, 10),
+    "schedule_interval": "@daily",
     "retries": 0,
     "retries_delay": timedelta(minutes=5),
-    "schedule_interval": "@daily",
+    "execution_timeout": timedelta(seconds=60),
 }
 
 with DAG(
-    "DAG-indicium",
+    "dag-indicium",
     default_args=default_args,
+    tags=['indicium'],
+    description="Data pipeline for the coding challenge brought by Indicium"
 ) as dag:
 
     t1 = BashOperator(

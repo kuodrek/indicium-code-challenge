@@ -2,12 +2,10 @@ import psycopg2
 import os
 import sys
 
-from task_utils import get_tables
-
 # Get {{ execution_date }}
 exec_date = sys.argv[1][:10]
 
-# Connect to northwind database
+# Connect to output database
 
 host = "output_db"
 database = "northwind_output_db"
@@ -41,7 +39,9 @@ INNER JOIN order_details ON orders.order_id=order_details.order_id
 """
 
 # SQL Query
-sql_to_file = "COPY ({0}) TO STDOUT WITH CSV DELIMITER ',' HEADER;".format(join_tables_query)
+sql_to_file = "COPY ({0}) TO STDOUT WITH CSV DELIMITER ',' HEADER;".format(
+    join_tables_query
+)
 
 # Write results on csv file
 with open(path_file, "w") as file_output:
