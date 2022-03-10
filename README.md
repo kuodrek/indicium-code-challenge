@@ -1,3 +1,4 @@
+
 # Indicium Code Challenge
 *By Luis Kuodrek*
 
@@ -17,6 +18,15 @@ graph LR;
 ```
 More info about the challenge can be found at: https://github.com/techindicium/code-challenge
 
+I built my pipeline based on the following requirements:
+
+1. All tasks should be idempotent
+2. Step 2 should run only if step 1 did not fail
+3. Extract all tables from the source database
+4. Build a pipeline that's easy to see where it failed
+5. Final query is saved in a CSV file.
+6. The pipeline must be able to run for different days
+7. Pipeline should be able to do backfills
 
 ## Solution
 
@@ -26,18 +36,18 @@ I also used Docker / Docker-compose to containerize my pipeline so it can run un
 
 ### Tasks
 The pipeline main tasks are:
-1. Extract data from Postgres database and write to local filesystem
-2. Extract data from CSV file and write to local filesystem
-3. Extract data from local filesystem, transform and load to a final database
+1. Extract data from Postgres database and write to local filesystem;
+2. Extract data from CSV file and write to local filesystem;
+3. Extract data from local filesystem, transform and load to a final database;
 4. Realize a query to extract the order and its details into a CSV file.
 
 Every task was written as a Python script. I printted pretty much all of the steps for each task so it becomes easier to see where the pipeline failed.
 
 **Task1: extract_northwind_db** 
-1. Connect to Postgres Database
-2. Get the names of all tables
-3. Check if folders for CSV files are created; If not, create that directory
-4. Write data into CSV file
+1. Connect to Postgres Database;
+2. Get the names of all tables;
+3. Check if folders for CSV files are created; If not, create that directory;
+4. Write data into CSV file.
 ```python
 import psycopg2
 import os
@@ -86,9 +96,9 @@ for  table_name  in  get_tables(db_conn):
 db_conn.close()
 ``` 
 **Task 2: extract_csv**
-1. Get CSV file input directory
-2. Check if CSV file output directory exists; if not, create it
-3. Copy file to output directory
+1. Get CSV file input directory;
+2. Check if CSV file output directory exists; if not, create it;
+3. Copy file to output directory.
 ```python
 import shutil
 import os
@@ -113,11 +123,11 @@ shutil.copy(path_file_input, path_file_output)
 print("Copied csv file")
 ```
 **Task 3: build_output_db** 
-1. Extracts local data
-2. Transform tables into dataframes
-3. Create a additional Column called 'execution_date' so the pipeline can update a data insertion from the same execution date
-4. Drop any rows with NaN to clean the DB
-5. Call the function execute_values and load the dataframe into the output Database
+1. Extracts local data;
+2. Transform tables into dataframes;
+3. Create a additional Column called 'execution_date' so the pipeline can update a data insertion from the same execution date;
+4. Drop any rows with NaN to clean the DB;
+5. Call the function execute_values and load the dataframe into the output Database.
 
 Since the data is relational, I chose postgres as the output DB since the other databases use postgres as well.
 ```python
@@ -196,7 +206,7 @@ db_conn.close()
 
 **get_tables():**
 
-Script that returns all table names of a Database
+Script that returns all table names of a Database:
 ```python
 # Get table names of a database
 def  get_tables(db_conn):
@@ -220,7 +230,7 @@ def  get_tables(db_conn):
 ```
 
 **init_tables()**
-Script to create the tables at the output database. The function checks if there are any tables first in order to avoid dropping data
+Script to create the tables at the output database. The function checks if there are any tables first in order to avoid dropping data:
 
 ```python
 # Create tables for the output database
@@ -249,3 +259,169 @@ def  init_tables(db_conn, exec_date):
 		"""
 ...
 ```
+
+### DAG
+I designed the dag file so Task 3  depends on Task 1 and 2 running successfuly. After the Task 3, Task 4 begins to run, doing the final query to the output database
+This DAG is scheduled to run at intervals of one day.
+
+I used the LocalExecutor since the problem doesn't deal with a large volume of data.
+
+DAG File
+
+```python
+from airflow import  DAG
+from datetime import  datetime, timedelta
+from airflow.operators.bash_operator import  BashOperator
+from pendulum import  today
+
+default_args  = {
+"owner": "Luis Kuodrek",
+"depends_on_past": False,
+"start_date": datetime(2022, 3, 10),
+"schedule_interval": "@daily",
+"retries": 0,
+"retries_delay": timedelta(minutes=5),
+"execution_timeout": timedelta(seconds=60),
+}
+
+with  DAG(
+"dag-indicium",
+default_args=default_args,
+tags=["indicium"],
+description="Data pipeline for the coding challenge brought by Indicium",
+) as dag:
+
+t1=BashOperator(
+task_id="extract_northwind_db",
+bash_command="""
+cd $AIRFLOW_HOME/dags/tasks/
+python3 extract_northwind_db.py {{ execution_date }}
+""",
+)
+
+t2  =  BashOperator(
+task_id="extract_csv",
+bash_command="""
+cd $AIRFLOW_HOME/dags/tasks/
+python3 extract_csv.py {{ execution_date }}
+""",
+)
+
+t3 = BashOperator(
+task_id="build_output_db",
+bash_command="""
+cd $AIRFLOW_HOME/dags/tasks/
+python3 build_output_db.py {{ execution_date }}
+""",
+)
+
+t4 = BashOperator(
+task_id="output_query",
+bash_command="""
+cd $AIRFLOW_HOME/dags/tasks/
+python3 output_query.py {{ execution_date }}
+""",
+)
+
+[t1, t2] >> t3 >> t4
+```
+
+The image below represents the pipeline:
+
+![image](https://user-images.githubusercontent.com/56697821/157696512-f8e6fe63-5869-485d-9bc7-0ea128259e1c.png)
+
+## Setup of the Solution
+
+I used Docker to containerize my solution so it is easier to run in other machines. I set up my environment using docker-compose.
+
+With docker compose installed use the following commands:
+
+```
+docker build . && docker-compose up
+```
+
+The docker-compose sets up the airflow database, scheduler and webserver, the northwind database and the output database.
+
+I created some common variables that all airflow services use, so the file looks a bit cleaner.
+
+I also created a dependency for the airflow scheduler and webserver, since the airflow-init must be run first.
+
+```docker
+version:  '3'
+x-airflow-common:
+	&airflow-common
+	build:  .
+	environment:
+		&airflow-common-env
+		AIRFLOW__CORE__EXECUTOR:  LocalExecutor
+		AIRFLOW__CORE__SQL_ALCHEMY_CONN:  postgresql+psycopg2://airflow:airflow@postgres/airflow
+		AIRFLOW__CORE__LOAD_EXAMPLES:  'false'
+	volumes:
+		-  ./data:/data
+		-  ./dags:/opt/airflow/dags
+		-  ./logs:/opt/airflow/logs
+		-  ./plugins:/opt/airflow/plugins
+	user:  "${AIRFLOW_UID:-50000}:0"
+	depends_on:
+		&airflow-common-depends-on
+		postgres:
+			condition:  service_healthy
+```
+
+I also created a healthcheck for each container to see if all the services are running correctly. 
+
+![image](https://user-images.githubusercontent.com/56697821/157697987-c8d04fae-e45a-4eb4-addb-44f63cba9e83.png)
+
+
+## Testing the Pipeline
+
+After you set up my code, it is possible to test each task or the whole pipeline in the past.
+Access the Airflow container:
+```
+docker exec -it <airflow-container> bash
+```
+To test some task:
+
+```
+airflow test dag-indicium extract_csv 2022-03-10
+```
+Tasks available in DAG-indicium: 
+1. extract_northwind_db
+2. extract_csv
+3. build_output_db
+4. output_query
+
+It is possible to backfill:
+```
+airflow dags backfill dag-indicium -s 2022-03-01 -e 2022-03-03
+```
+The output files are created at  `/data` folder.
+
+## Access Output database
+
+To access the Output database use psql CLI:
+```
+docker exec -ti output_db bash
+psql -U postgres -d northwind_output_db
+```
+
+![image](https://user-images.githubusercontent.com/56697821/157699014-554960cd-dbdb-4284-9826-2a831473a04f.png)
+
+To see the order_details data, just use the command ```TABLE order_details;```:
+
+![image](https://user-images.githubusercontent.com/56697821/157699223-b27451c9-9ebc-4038-98b6-f1e971f4896f.png)
+
+## Monitor and Troubleshoot 
+
+Airflow provides a web service to monitor and troubleshoot in pipelines. To start the web server just type in your browser [localhost:8080](https://localhost:8080). 
+
+Thanks for reading! 
+
+Luis Nicolas Kuodrek
+[https://www.linkedin.com/in/luisnicolaskuodrek/](https://www.linkedin.com/in/luisnicolaskuodrek/)
+[https://github.com/kuodrek/](https://github.com/cidraljunior/)
+
+> Written with [StackEdit](https://stackedit.io/).
+
+## Final
+Thanks to Indicium for bringing me this challenge. It was a great way to learn the technologies used in the data engineering context. I had lots of great time learning and coding!
