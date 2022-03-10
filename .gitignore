@@ -6,3 +6,4 @@ plugins/
 logs/
 data/csv/
 data/postgres/
+data/output/
