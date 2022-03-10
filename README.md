@@ -419,6 +419,7 @@ Thanks for reading!
 
 Luis Nicolas Kuodrek
 [https://www.linkedin.com/in/luisnicolaskuodrek/](https://www.linkedin.com/in/luisnicolaskuodrek/)
+
 [https://github.com/kuodrek/](https://github.com/cidraljunior/)
 
 > Written with [StackEdit](https://stackedit.io/).
