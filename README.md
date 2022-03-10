@@ -257,9 +257,33 @@ def  init_tables(db_conn, exec_date):
 		db_cursor.execute(
 		"""
 		DROP TABLE IF EXISTS customer_customer_demo;
-		DROP TABLE IF EXISTS customer_demographics;ired")
-			return  table_names
+		DROP TABLE IF EXISTS customer_demographics;")
+		DROP TABLE IF EXISTS employee_territories;
+		...
 		"""
+		)
+...
+
+	print("All tables dropped successfuly")
+
+        db_cursor.execute(
+            """CREATE TABLE categories (
+            category_id smallint NOT NULL,
+            category_name character varying(15) NOT NULL,
+            description text,
+            picture bytea,
+            execution_date date
+        );"""
+        )
+
+        db_cursor.execute(
+            """CREATE TABLE customer_customer_demo (
+            customer_id bpchar NOT NULL,
+            customer_type_id bpchar NOT NULL,
+            execution_date date
+        );"""
+        )
+
 ...
 ```
 
